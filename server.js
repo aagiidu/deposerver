@@ -312,10 +312,11 @@ function extractData(msg) {
     if (username.indexOf('(') > -1) {
       username = username.split('(')[0];
     }
-    username = username.replaceAll('eb-', '')
-        .replaceAll('mm-', '')
-        .replaceAll('mm:', '')
-        .replaceAll(' ', '');
+    username = username.replace('eb-', '')
+        .replace('mm-', '')
+        .replace('mm:', '')
+        .replace(' ', '')
+        .trim();
   }
   // TDB
   if (msg.sender == '133133' || msg.sender == '98950575') {
@@ -326,7 +327,7 @@ function extractData(msg) {
       data.error = 'Цэнэглэх дүн олдсонгүй';
       return data;
     }
-    amount = parseInt(matchAmount[0].replaceAll(',', '').replaceAll('dansand', '').replaceAll('.00mnt', ''));
+    amount = parseInt(matchAmount[0].replace(',', '').replace('dansand', '').replace('.00mnt', ''));
     // Username
     username = str.match(/(.*)(?=(\n.*){1}$)/g);
     if (!username || !username[0]) {
@@ -334,7 +335,7 @@ function extractData(msg) {
       data.error = 'Нэр нь олдсонгүй';
       return data;
     }
-    username = username[0].replaceAll('utga:', '');
+    username = username[0].replace('utga:', '');
     if (username.indexOf('(') > -1) {
       username = username.split('(')[0];
     }
@@ -343,11 +344,11 @@ function extractData(msg) {
     }
     username = username
         .toLowerCase()
-        .replaceAll('eb-', '')
-        .replaceAll('mm-', '')
-        .replaceAll('mm:', '');
-    username = username.replaceAll(/\s?\d{2}\/\d{2}\/\d{2}\s\d{2}\:\d{2}\:\d{2}/g, '');
-    username = username.replaceAll(' ', '');
+        .replace('eb-', '')
+        .replace('mm-', '')
+        .replace('mm:', '');
+    username = username.replace(/\s?\d{2}\/\d{2}\/\d{2}\s\d{2}\:\d{2}\:\d{2}/g, '');
+    username = username.replace(' ', '');
   }
   if (username == '' || amount == 0) {
     data.status = 1;
