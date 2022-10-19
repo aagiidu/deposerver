@@ -291,11 +291,11 @@ function extractData(msg) {
       return data;
     }
     console.log('amountMatch', amountMatch)
-    let amountStr = amountMatch[0].replaceAll(',', '');
+    let amountStr = amountMatch[0].replace(',', '');
     console.log('amountStr', amountStr)
-    amountStr = amountStr.replaceAll('orlogo:', '');
+    amountStr = amountStr.replace('orlogo:', '');
     console.log('amountStr', amountStr)
-    amountStr = amountStr.replaceAll('.00mnt', '');
+    amountStr = amountStr.replace('.00mnt', '');
     console.log('amountStr', amountStr)
     amount = parseInt(amountStr);
     console.log('amount', amount)
