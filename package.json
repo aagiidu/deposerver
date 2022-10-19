@@ -9,7 +9,7 @@
   },
   "author": "Brad Traversy",
   "license": "MIT",
-  "proxy": "http://localhost:3000",
+  "proxy": "http://157.245.151.65",
   "dependencies": {
     "@socket.io/redis-adapter": "^7.1.0",
     "axios": "^1.1.3",
