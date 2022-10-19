@@ -291,7 +291,11 @@ function extractData(msg) {
       return data;
     }
     console.log('amountMatch', amountMatch)
-    amount = parseInt(amountMatch[0].replaceAll(',', '').replaceAll('orlogo:', '').replaceAll('.00mnt', ''));
+    let amountStr = amountMatch[0].replaceAll(',', '');
+    amountStr = amountStr.replaceAll('orlogo:', '');
+    amountStr = amountStr.replaceAll('.00mnt', '');
+    amount = parseInt(amountStr);
+    //amount = parseInt(amountMatch[0].replaceAll(',', '').replaceAll('orlogo:', '').replaceAll('.00mnt', ''));
     // Get Username
     let expUser = /(?<=utga:).*$/;
     let userMatch = str.match(expUser);
