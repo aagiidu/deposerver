@@ -113,7 +113,7 @@ io.on("connection", (socket) => {
       doc.timestamp = data.timestamp;
       await doc.save();
       //socket.broadcast.to('Javascript').emit("message", formatMessage(doc._id, msg));
-      Message.find({status: 2}).then(messages => {
+      /* Message.find({status: 2}).then(messages => {
         socket.broadcast
           .to('Javascript')
           .emit(
@@ -128,7 +128,8 @@ io.on("connection", (socket) => {
             "failedList",
             messages
           );
-      });
+      }); */
+      updateList();
       res.json({msg: 'success'})
     } else {
       const doc = new Message();
@@ -167,7 +168,8 @@ io.on("connection", (socket) => {
         doc.timestamp = data.timestamp;
         await doc.save();
       } finally {
-        Message.find({status: 2}).then(messages => {
+        updateList();
+        /* Message.find({status: 2}).then(messages => {
           socket.broadcast
             .to('Javascript')
             .emit(
@@ -182,7 +184,7 @@ io.on("connection", (socket) => {
               "failedList",
               messages
             );
-        });
+        }); */
         res.json({msg: 'success'})
       }
     }
@@ -191,14 +193,14 @@ io.on("connection", (socket) => {
   app.post('/api/delete', async function (req, res, next) {
     const {id} = req.body;
     Message.find({}).deleteOne({_id: id}, () => {
-      Message.find({status: 1}).then(messages => {
+      /* Message.find({status: 1}).then(messages => {
         socket.broadcast
           .to('Javascript')
           .emit(
             "messageList",
             messages
           );
-      });
+      }); */
     });
     res.json({msg: 'success'});
   });
