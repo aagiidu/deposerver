@@ -14,10 +14,10 @@ const socket = io();
 socket.emit('joinRoom', { username, room });
 
 // Get room and users
-socket.on('roomUsers', ({ room, users }) => {
-  outputRoomName(room);
-  outputUsers(users);
-});
+/* socket.on('roomUsers', ({ room, users }) => {
+  // outputRoomName(room);
+  // outputUsers(users);
+}); */
 
 // Message from server
 socket.on('message', (message) => {
@@ -28,25 +28,14 @@ socket.on('message', (message) => {
   chatMessages.scrollTop = chatMessages.scrollHeight;
 });
 
-// Message submit
-chatForm.addEventListener('submit', (e) => {
-  e.preventDefault();
-
-  // Get message text
-  let msg = e.target.elements.msg.value;
-
-  msg = msg.trim();
-
-  if (!msg) {
-    return false;
+// MessageList from server
+socket.on('messageList', (messageList) => {
+  for (let i = 0; i < messageList.length; i++) {
+    outputMessage(messageList[i]);
   }
 
-  // Emit message to server
-  socket.emit('chatMessage', msg);
-
-  // Clear input
-  e.target.elements.msg.value = '';
-  e.target.elements.msg.focus();
+  // Scroll down
+  chatMessages.scrollTop = chatMessages.scrollHeight;
 });
 
 // Output message to DOM
@@ -56,11 +45,12 @@ function outputMessage(message) {
   const p = document.createElement('p');
   p.classList.add('meta');
   p.innerText = message.username;
-  p.innerHTML += `<span>${message.time}</span>`;
+  const d = formatDate(new Date(message.timestamp));
+  p.innerHTML += `<span>${d}</span>`;
   div.appendChild(p);
   const para = document.createElement('p');
   para.classList.add('text');
-  para.innerText = message.text;
+  para.innerText = message.body;
   div.appendChild(para);
   document.querySelector('.chat-messages').appendChild(div);
 }
@@ -70,19 +60,26 @@ function outputRoomName(room) {
   roomName.innerText = room;
 }
 
-// Add users to DOM
-function outputUsers(users) {
-  userList.innerHTML = '';
-  users.forEach((user) => {
-    const li = document.createElement('li');
-    li.innerText = user.username;
-    userList.appendChild(li);
-  });
+const formatDate = (date) => {
+  let d = new Date(date);
+  let month = (d.getMonth() + 1);
+  let day = d.getDate();
+  let year = d.getFullYear();
+  let hours = d.getHours();
+  let minutes = d.getMinutes();
+  let seconds = d.getSeconds();
+  if (month < 10) month = '0' + month;
+  if (day < 10) day = '0' + day;
+  if (hours < 10) hours = '0' + hours;
+  if (minutes < 10) minutes = '0' + minutes;
+  if (seconds < 10) seconds = '0' + seconds;
+  
+  return [year, month, day].join('-') + ' ' + [hours, minutes, seconds].join(':');
 }
 
 //Prompt the user before leave chat room
 document.getElementById('leave-btn').addEventListener('click', () => {
-  const leaveRoom = confirm('Are you sure you want to leave the chatroom?');
+  const leaveRoom = confirm('Logout?');
   if (leaveRoom) {
     window.location = '../index.html';
   } else {

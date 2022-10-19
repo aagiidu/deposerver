@@ -1,87 +1,348 @@
 const path = require("path");
 const http = require("http");
 const express = require("express");
-const socketio = require("socket.io");
+const router = express.Router();
+
 const formatMessage = require("./utils/messages");
 const createAdapter = require("@socket.io/redis-adapter").createAdapter;
 const redis = require("redis");
 require("dotenv").config();
-const { createClient } = redis;
+const body_parser = require('body-parser');
+// const { createClient } = redis;
+const cors = require('cors');
+
+const app = express().use(body_parser.json());
+const corsOptions = {
+  credentials: true, // This is important.
+  origin: (origin, callback) => {
+    return callback(null, true);
+    if (whitelist.includes(origin)) return callback(null, true);
+
+    callback(new Error('Not allowed by CORS'));
+  },
+};
+var ObjectId = require('mongodb').ObjectID;
+const axios = require('axios');
+app.use(cors(corsOptions));
+const server = http.createServer(app);
+const io = require("socket.io")(server, {
+  cors: {
+    origin: "http://localhost:3000",
+    methods: ["GET", "POST"]
+  }
+});
+const baseUrl = 'https://game.pokertime.one';
+// const io = socketio(server);
+require("./models/Message");
+require("./models/User");
+
+const mongoose = require("mongoose");
+
+mongoose.Promise = global.Promise;
+
+mongoose.connect(process.env.DATABASE, {
+  useUnifiedTopology: true,
+  useNewUrlParser: true,
+});
+
+mongoose.connection.on("error", (err) => {
+  console.log("Mongoose Connection ERROR: " + err.message);
+});
+
+mongoose.connection.once("open", () => {
+  console.log("MongoDB Connected!");
+});
+
+const Message = mongoose.model("Message");
+const User = mongoose.model("User");
+// app.use(cors())
+// Set static folder
+// app.use(express.static(path.join(__dirname, "public")));
+
 const {
   userJoin,
   getCurrentUser,
   userLeave,
-  getRoomUsers,
 } = require("./utils/users");
 
-const app = express();
-const server = http.createServer(app);
-const io = socketio(server);
-
-// Set static folder
-app.use(express.static(path.join(__dirname, "public")));
-
-const botName = "ChatCord Bot";
-
-(async () => {
-  pubClient = createClient({ url: "redis://127.0.0.1:6379" });
-  await pubClient.connect();
-  subClient = pubClient.duplicate();
-  io.adapter(createAdapter(pubClient, subClient));
-})();
-
+/* Message.find({}).deleteMany({}, (err, col) => {
+  if(err) throw err;
+  console.log(col);
+}); */
+/* const demouser = new User();
+demouser.username = 'Aagii';
+demouser.password = 'Pass#123';
+demouser.save(); */
 // Run when client connects
 io.on("connection", (socket) => {
-  console.log(io.of("/").adapter);
+
   socket.on("joinRoom", ({ username, room }) => {
     const user = userJoin(socket.id, username, room);
-
     socket.join(user.room);
-
-    // Welcome current user
-    socket.emit("message", formatMessage(botName, "Welcome to ChatCord!"));
-
-    // Broadcast when a user connects
-    socket.broadcast
-      .to(user.room)
-      .emit(
-        "message",
-        formatMessage(botName, `${user.username} has joined the chat`)
-      );
-
-    // Send users and room info
-    io.to(user.room).emit("roomUsers", {
-      room: user.room,
-      users: getRoomUsers(user.room),
-    });
+    updateList();
   });
 
   // Listen for chatMessage
   socket.on("chatMessage", (msg) => {
     const user = getCurrentUser(socket.id);
+    io.to(user.room).emit("message", msg);
+  });
 
-    io.to(user.room).emit("message", formatMessage(user.username, msg));
+  app.post('/api/newmessage', async function (req, res, next) {
+    const { sessionId } = req.body;
+    const data = extractData(req.body)
+    console.log('ExtractedData', data);
+    if(data.status !== 2){
+      const doc = new Message();
+      await doc.save(); 
+      doc.ConfirmationId = '';
+      doc.amount = data.amount;
+      doc.username = data.username;
+      doc.errorText = data.error;
+      doc.status = 1;
+      doc.sender = data.sender;
+      doc.body = data.body;
+      doc.timestamp = data.timestamp;
+      await doc.save();
+      //socket.broadcast.to('Javascript').emit("message", formatMessage(doc._id, msg));
+      Message.find({status: 2}).then(messages => {
+        socket.broadcast
+          .to('Javascript')
+          .emit(
+            "successList",
+            messages
+          );
+      });
+      Message.find({status: 1}).then(messages => {
+        socket.broadcast
+          .to('Javascript')
+          .emit(
+            "failedList",
+            messages
+          );
+      });
+      res.json({msg: 'success'})
+    } else {
+      const doc = new Message();
+      await doc.save(); 
+      try {
+        const res = await axios.get(`${baseUrl}/Deposit?username=${data.username}&amount=${data.amount}&sessionId=${sessionId}`);
+        if (res.data['ConfirmationId'] != null) {
+          doc.ConfirmationId = res.data['ConfirmationId'];
+          doc.amount = data.amount;
+          doc.username = data.username;
+          doc.errorText = '';
+          doc.status = 2;
+          doc.sender = data.sender;
+          doc.body = data.body;
+          doc.timestamp = data.timestamp;
+          await doc.save();
+        } else {
+          doc.ConfirmationId = '';
+          doc.amount = data.amount;
+          doc.username = data.username;
+          doc.errorText = res.data["Error"];
+          doc.status = 1;
+          doc.sender = data.sender;
+          doc.body = data.body;
+          doc.timestamp = data.timestamp;
+          await doc.save();
+        }
+      } catch (error) {
+        doc.ConfirmationId = '';
+        doc.amount = data.amount;
+        doc.username = data.username;
+        doc.errorText = error.response.data["Error"];
+        doc.status = 1;
+        doc.sender = data.sender;
+        doc.body = data.body;
+        doc.timestamp = data.timestamp;
+        await doc.save();
+      } finally {
+        Message.find({status: 2}).then(messages => {
+          socket.broadcast
+            .to('Javascript')
+            .emit(
+              "successList",
+              messages
+            );
+        });
+        Message.find({status: 1}).then(messages => {
+          socket.broadcast
+            .to('Javascript')
+            .emit(
+              "failedList",
+              messages
+            );
+        });
+        res.json({msg: 'success'})
+      }
+    }
+  });
+
+  app.post('/api/delete', async function (req, res, next) {
+    const {id} = req.body;
+    Message.find({}).deleteOne({_id: id}, () => {
+      Message.find({status: 1}).then(messages => {
+        socket.broadcast
+          .to('Javascript')
+          .emit(
+            "messageList",
+            messages
+          );
+      });
+    });
+    res.json({msg: 'success'});
+  });
+
+  app.get('/api/successlist', async function (req, res, next) {
+    const {id} = req.body;
+    Message.find({status: 2}).then(messages => {
+      res.json({msg: 'success', messages});
+    });
+  });
+
+  app.get('/api/failedlist', async function (req, res, next) {
+    const {id} = req.body;
+    Message.find({status: 1}).then(messages => {
+      res.json({msg: 'success', messages});
+    });
+  });
+
+  app.get('/api/refresh', async function (req, res, next) {
+    updateList();
+    res.json({msg: 'success'});
+  });
+
+  app.post('/api/search', async function (req, res, next) {
+    const { username } = req.body
+    const searchList = await Message.find({username});
+    res.json({msg: 'success', searchList});
   });
 
   // Runs when client disconnects
   socket.on("disconnect", () => {
     const user = userLeave(socket.id);
-
-    if (user) {
-      io.to(user.room).emit(
-        "message",
-        formatMessage(botName, `${user.username} has left the chat`)
-      );
-
+    /* if (user) {
       // Send users and room info
       io.to(user.room).emit("roomUsers", {
         room: user.room,
         users: getRoomUsers(user.room),
       });
-    }
+    } */
   });
+
+  function updateList() {
+    Message.find({status: 2}).sort({ "timestamp": -1 }).limit(100).then(messages => {
+      socket.broadcast
+        .to('Javascript')
+        .emit(
+          "successList",
+          messages
+        );
+    });
+    Message.find({status: 1}).sort({ "timestamp": -1 }).limit(100).then(messages => {
+      socket.broadcast
+        .to('Javascript')
+        .emit(
+          "failedList",
+          messages
+        );
+    });
+  }
 });
 
-const PORT = process.env.PORT || 3000;
+function extractData(msg) {
+  if (msg.sender != '131917' &&
+      msg.sender != '133133' &&
+      msg.sender != 'Khanbank' &&
+      msg.sender != '80102053') return;
+  // MM: ХААНА
+  let username = '';
+  let amount = 0;
+  let str = msg.body.toLowerCase();
+  let data = {
+    sender: msg.sender,
+    body: str,
+    timestamp: msg.timestamp,
+    status: 0,
+    username: '',
+    amount: 0,
+    error: '',
+  };
+  // Khanbank
+  if (msg.sender == '131917' ||
+      msg.sender == '80102053' ||
+      msg.sender == 'Khanbank') {
+    // Get Amount
+    let expAmount = /orlogo:(.*?)[.][\d]+mnt/g;
+    let amountMatch = str.match(expAmount);
+    if (!amountMatch || !amountMatch[0]) {
+      data.status = 1;
+      data.error = 'Цэнэглэх дүн олдсонгүй';
+      return data;
+    }
+    amount = parseInt(amountMatch[0].replaceAll(',', '').replaceAll('orlogo:', '').replaceAll('.00mnt', ''));
+    // Get Username
+    let expUser = /(?<=utga:).*$/;
+    let userMatch = str.match(expUser);
+    if (!userMatch) {
+      data.status = 1;
+      data.error = 'Нэр нь олдсонгүй';
+      return data;
+    }
+    username = userMatch[0];
+    if (username.indexOf('(') > -1) {
+      username = username.split('(')[0];
+    }
+    username = username.replaceAll('eb-', '')
+        .replaceAll('mm-', '')
+        .replaceAll('mm:', '')
+        .replaceAll(' ', '');
+  }
+  // TDB
+  if (msg.sender == '133133' || msg.sender == '98950575') {
+    let expAmount = /dansand(.*?)[.][\d]+mnt/g;
+    let matchAmount = str.match(expAmount);
+    if (!matchAmount || !matchAmount[0]) {
+      data.status = 1;
+      data.error = 'Цэнэглэх дүн олдсонгүй';
+      return data;
+    }
+    amount = parseInt(matchAmount[0].replaceAll(',', '').replaceAll('dansand', '').replaceAll('.00mnt', ''));
+    // Username
+    username = str.match(/(.*)(?=(\n.*){1}$)/g);
+    if (!username || !username[0]) {
+      data.status = 1;
+      data.error = 'Нэр нь олдсонгүй';
+      return data;
+    }
+    username = username[0].replaceAll('utga:', '');
+    if (username.indexOf('(') > -1) {
+      username = username.split('(')[0];
+    }
+    if (username.indexOf('/') > -1) {
+      username = username.split('/')[0];
+    }
+    username = username
+        .toLowerCase()
+        .replaceAll('eb-', '')
+        .replaceAll('mm-', '')
+        .replaceAll('mm:', '');
+    username = username.replaceAll(/\s?\d{2}\/\d{2}\/\d{2}\s\d{2}\:\d{2}\:\d{2}/g, '');
+    username = username.replaceAll(' ', '');
+  }
+  if (username == '' || amount == 0) {
+    data.status = 1;
+    data.error = 'Нэр эсвэл дүн нь олдсонгүй';
+    return data;
+  };
+  data.status = 2;
+  data.username = username;
+  data.amount = amount;
+  return data;
+}
+
+const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));

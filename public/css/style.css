@@ -108,6 +108,7 @@ a {
 }
 
 .chat-messages .message .meta span {
+	float: right;
 	color: #777;
 }
 
