@@ -24,10 +24,18 @@ const corsOptions = {
 var ObjectId = require('mongodb').ObjectID;
 const axios = require('axios');
 app.use(cors(corsOptions));
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "http://157.245.151.65");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept"
+  );
+  next();
+});
 const server = http.createServer(app);
 const io = require("socket.io")(server, {
   cors: {
-    origin: "http://localhost:3000",
+    origin: "http://157.245.151.65",
     methods: ["GET", "POST"]
   }
 });
