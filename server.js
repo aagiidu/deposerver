@@ -290,6 +290,7 @@ function extractData(msg) {
       data.error = 'Цэнэглэх дүн олдсонгүй';
       return data;
     }
+    console.log('amountMatch', amountMatch)
     amount = parseInt(amountMatch[0].replaceAll(',', '').replaceAll('orlogo:', '').replaceAll('.00mnt', ''));
     // Get Username
     let expUser = /(?<=utga:).*$/;
