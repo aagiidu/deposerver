@@ -112,23 +112,6 @@ io.on("connection", (socket) => {
       doc.body = data.body;
       doc.timestamp = data.timestamp;
       await doc.save();
-      //socket.broadcast.to('Javascript').emit("message", formatMessage(doc._id, msg));
-      /* Message.find({status: 2}).then(messages => {
-        socket.broadcast
-          .to('Javascript')
-          .emit(
-            "successList",
-            messages
-          );
-      });
-      Message.find({status: 1}).then(messages => {
-        socket.broadcast
-          .to('Javascript')
-          .emit(
-            "failedList",
-            messages
-          );
-      }); */
       updateList();
       res.json({msg: 'success'})
     } else {
@@ -169,22 +152,6 @@ io.on("connection", (socket) => {
         await doc.save();
       } finally {
         updateList();
-        /* Message.find({status: 2}).then(messages => {
-          socket.broadcast
-            .to('Javascript')
-            .emit(
-              "successList",
-              messages
-            );
-        });
-        Message.find({status: 1}).then(messages => {
-          socket.broadcast
-            .to('Javascript')
-            .emit(
-              "failedList",
-              messages
-            );
-        }); */
         res.json({msg: 'success'})
       }
     }
@@ -193,14 +160,7 @@ io.on("connection", (socket) => {
   app.post('/api/delete', async function (req, res, next) {
     const {id} = req.body;
     Message.find({}).deleteOne({_id: id}, () => {
-      /* Message.find({status: 1}).then(messages => {
-        socket.broadcast
-          .to('Javascript')
-          .emit(
-            "messageList",
-            messages
-          );
-      }); */
+      console.log('deleted');
     });
     res.json({msg: 'success'});
   });
@@ -233,13 +193,6 @@ io.on("connection", (socket) => {
   // Runs when client disconnects
   socket.on("disconnect", () => {
     const user = userLeave(socket.id);
-    /* if (user) {
-      // Send users and room info
-      io.to(user.room).emit("roomUsers", {
-        room: user.room,
-        users: getRoomUsers(user.room),
-      });
-    } */
   });
 
   function updateList() {
@@ -284,73 +237,85 @@ function extractData(msg) {
   if (msg.sender == '131917' ||
       msg.sender == '80102053' ||
       msg.sender == 'Khanbank') {
-    // Get Amount
-    let expAmount = /orlogo:(.*?)[.][\d]+mnt/g;
-    let amountMatch = str.match(expAmount);
-    if (!amountMatch || !amountMatch[0]) {
-      data.status = 1;
-      data.error = 'Цэнэглэх дүн олдсонгүй';
-      return data;
-    }
-    console.log('amountMatch', amountMatch)
-    let amountStr = amountMatch[0].replace(',', '');
-    console.log('amountStr', amountStr)
-    amountStr = amountStr.replace('orlogo:', '');
-    console.log('amountStr', amountStr)
-    amountStr = amountStr.replace('.00mnt', '');
-    console.log('amountStr', amountStr)
-    amount = parseInt(amountStr);
-    console.log('amount', amount)
-    //amount = parseInt(amountMatch[0].replaceAll(',', '').replaceAll('orlogo:', '').replaceAll('.00mnt', ''));
-    // Get Username
-    let expUser = /(?<=utga:).*$/;
-    let userMatch = str.match(expUser);
-    if (!userMatch) {
-      data.status = 1;
-      data.error = 'Нэр нь олдсонгүй';
-      return data;
-    }
-    username = userMatch[0];
-    if (username.indexOf('(') > -1) {
-      username = username.split('(')[0];
-    }
-    username = username.replace('eb-', '')
-        .replace('mm-', '')
-        .replace('mm:', '')
-        .replace(' ', '')
-        .trim();
+        try {
+          // Get Amount
+          let expAmount = /orlogo:(.*?)[.][\d]+mnt/g;
+          let amountMatch = str.match(expAmount);
+          if (!amountMatch || !amountMatch[0]) {
+            data.status = 1;
+            data.error = 'Цэнэглэх дүн олдсонгүй';
+            return data;
+          }
+          console.log('amountMatch', amountMatch)
+          let amountStr = amountMatch[0].replace(',', '');
+          console.log('amountStr', amountStr)
+          amountStr = amountStr.replace('orlogo:', '');
+          console.log('amountStr', amountStr)
+          amountStr = amountStr.replace('.00mnt', '');
+          console.log('amountStr', amountStr)
+          amount = parseInt(amountStr);
+          console.log('amount', amount)
+          //amount = parseInt(amountMatch[0].replaceAll(',', '').replaceAll('orlogo:', '').replaceAll('.00mnt', ''));
+          // Get Username
+          let expUser = /(?<=utga:).*$/;
+          let userMatch = str.match(expUser);
+          if (!userMatch) {
+            data.status = 1;
+            data.error = 'Нэр нь олдсонгүй';
+            return data;
+          }
+          username = userMatch[0];
+          if (username.indexOf('(') > -1) {
+            username = username.split('(')[0];
+          }
+          username = username.replace('eb-', '')
+              .replace('mm-', '')
+              .replace('mm:', '')
+              .replace(' ', '')
+              .trim();
+        } catch (error) {
+          data.status = 1;
+          data.error = error;
+          return data;
+        }
   }
   // TDB
   if (msg.sender == '133133' || msg.sender == '98950575') {
-    let expAmount = /dansand(.*?)[.][\d]+mnt/g;
-    let matchAmount = str.match(expAmount);
-    if (!matchAmount || !matchAmount[0]) {
+    try {
+      let expAmount = /dansand(.*?)[.][\d]+mnt/g;
+      let matchAmount = str.match(expAmount);
+      if (!matchAmount || !matchAmount[0]) {
+        data.status = 1;
+        data.error = 'Цэнэглэх дүн олдсонгүй';
+        return data;
+      }
+      amount = parseInt(matchAmount[0].replace(',', '').replace('dansand', '').replace('.00mnt', ''));
+      // Username
+      username = str.match(/(.*)(?=(\n.*){1}$)/g);
+      if (!username || !username[0]) {
+        data.status = 1;
+        data.error = 'Нэр нь олдсонгүй';
+        return data;
+      }
+      username = username[0].replace('utga:', '');
+      if (username.indexOf('(') > -1) {
+        username = username.split('(')[0];
+      }
+      if (username.indexOf('/') > -1) {
+        username = username.split('/')[0];
+      }
+      username = username
+          .toLowerCase()
+          .replace('eb-', '')
+          .replace('mm-', '')
+          .replace('mm:', '');
+      username = username.replace(/\s?\d{2}\/\d{2}\/\d{2}\s\d{2}\:\d{2}\:\d{2}/g, '');
+      username = username.replace(' ', '');
+    } catch (error) {
       data.status = 1;
-      data.error = 'Цэнэглэх дүн олдсонгүй';
+      data.error = error;
       return data;
     }
-    amount = parseInt(matchAmount[0].replace(',', '').replace('dansand', '').replace('.00mnt', ''));
-    // Username
-    username = str.match(/(.*)(?=(\n.*){1}$)/g);
-    if (!username || !username[0]) {
-      data.status = 1;
-      data.error = 'Нэр нь олдсонгүй';
-      return data;
-    }
-    username = username[0].replace('utga:', '');
-    if (username.indexOf('(') > -1) {
-      username = username.split('(')[0];
-    }
-    if (username.indexOf('/') > -1) {
-      username = username.split('/')[0];
-    }
-    username = username
-        .toLowerCase()
-        .replace('eb-', '')
-        .replace('mm-', '')
-        .replace('mm:', '');
-    username = username.replace(/\s?\d{2}\/\d{2}\/\d{2}\s\d{2}\:\d{2}\:\d{2}/g, '');
-    username = username.replace(' ', '');
   }
   if (username == '' || amount == 0) {
     data.status = 1;
