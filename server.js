@@ -24,18 +24,18 @@ const corsOptions = {
 var ObjectId = require('mongodb').ObjectID;
 const axios = require('axios');
 app.use(cors(corsOptions));
-/* app.use((req, res, next) => {
+app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "http://157.245.151.65");
   res.header(
     "Access-Control-Allow-Headers",
     "Origin, X-Requested-With, Content-Type, Accept"
   );
   next();
-}); */
+});
 const server = http.createServer(app);
 const io = require("socket.io")(server, {
   cors: {
-    origin: "http://localhost:3000", //"http://157.245.151.65",
+    origin: "http://157.245.151.65", // "http://localhost:3000",
     methods: ["GET", "POST"]
   }
 });
@@ -72,6 +72,7 @@ const {
   getCurrentUser,
   userLeave,
 } = require("./utils/users");
+const { errorMonitor } = require("events");
 
 /* Message.find({}).deleteMany({}, (err, col) => {
   if(err) throw err;
@@ -94,6 +95,58 @@ io.on("connection", (socket) => {
   socket.on("chatMessage", (msg) => {
     const user = getCurrentUser(socket.id);
     io.to(user.room).emit("message", msg);
+  });
+
+  app.post('/api/delete', async function (req, res, next) {
+    const {id} = req.body;
+    Message.find({}).deleteOne({_id: id}, () => {
+      console.log('deleted');
+    });
+    res.json({msg: 'success'});
+  });
+
+  app.get('/api/successlist', async function (req, res, next) {
+    const {id} = req.body;
+    Message.find({status: 2}).then(messages => {
+      res.json({msg: 'success', messages});
+    });
+  });
+
+  app.get('/api/failedlist', async function (req, res, next) {
+    const {id} = req.body;
+    Message.find({status: 1}).then(messages => {
+      res.json({msg: 'success', messages});
+    });
+  });
+
+  app.get('/api/refresh', async function (req, res, next) {
+    updateList();
+    res.json({msg: 'success'});
+  });
+
+  app.post('/api/search', async function (req, res, next) {
+    const { username } = req.body
+    const searchList = await Message.find({username});
+    res.json({msg: 'success', searchList});
+  });
+
+  app.post('/api/delete/success', async function (req, res, next) {
+    const { token } = req.body
+    if(token === '4523bbb27f114137a4169da1c5e7fda0') {
+      Message.find({status: 2}).deleteMany({}, (err, col) => {
+        if(err) throw err;
+        console.log(col);
+      });
+      updateList();
+      res.json({msg: 'success'});
+    }else{
+      res.json({msg: 'invalid token'});
+    }
+  });
+
+  // Runs when client disconnects
+  socket.on("disconnect", () => {
+    const user = userLeave(socket.id);
   });
 
   app.post('/api/newmessage', async function (req, res, next) {
@@ -157,58 +210,6 @@ io.on("connection", (socket) => {
     }
   });
 
-  app.post('/api/delete', async function (req, res, next) {
-    const {id} = req.body;
-    Message.find({}).deleteOne({_id: id}, () => {
-      console.log('deleted');
-    });
-    res.json({msg: 'success'});
-  });
-
-  app.get('/api/successlist', async function (req, res, next) {
-    const {id} = req.body;
-    Message.find({status: 2}).then(messages => {
-      res.json({msg: 'success', messages});
-    });
-  });
-
-  app.get('/api/failedlist', async function (req, res, next) {
-    const {id} = req.body;
-    Message.find({status: 1}).then(messages => {
-      res.json({msg: 'success', messages});
-    });
-  });
-
-  app.get('/api/refresh', async function (req, res, next) {
-    updateList();
-    res.json({msg: 'success'});
-  });
-
-  app.post('/api/search', async function (req, res, next) {
-    const { username } = req.body
-    const searchList = await Message.find({username});
-    res.json({msg: 'success', searchList});
-  });
-
-  app.post('/api/delete/success', async function (req, res, next) {
-    const { token } = req.body
-    if(token === '4523bbb27f114137a4169da1c5e7fda0') {
-      Message.find({status: 2}).deleteMany({}, (err, col) => {
-        if(err) throw err;
-        console.log(col);
-      });
-      updateList();
-      res.json({msg: 'success'});
-    }else{
-      res.json({msg: 'invalid token'});
-    }
-  });
-
-  // Runs when client disconnects
-  socket.on("disconnect", () => {
-    const user = userLeave(socket.id);
-  });
-
   function updateList() {
     Message.find({status: 2}).sort({ "timestamp": -1 }).limit(100).then(messages => {
       socket.broadcast
@@ -231,8 +232,9 @@ io.on("connection", (socket) => {
 
 app.get('/api/report/:start/:end', async function (req, res) {
   const {start, end} = req.params;
-  const messages = await Message.find({status: 2, timestamp: {$gte: start, $lte: end}}).sort({ "timestamp": -1 })
-  res.json({msg: 'success', count: messages.length, messages});
+  /* const messages = await  */
+  const messages = await Message.find({timestamp: {$gte: start, $lte: end}}).sort({ "timestamp": -1 });
+  res.json({msg: 'success', messages});  
 });
 
 function extractData(msg) {
