@@ -271,6 +271,7 @@ function extractData(msg) {
           username = username.replace('eb-', '')
               .replace('mm-', '')
               .replace('mm:', '')
+              .replace('eb-', '')
               .replace(' ', '')
               .trim();
         } catch (error) {
