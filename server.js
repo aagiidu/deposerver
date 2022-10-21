@@ -190,6 +190,17 @@ io.on("connection", (socket) => {
     res.json({msg: 'success', searchList});
   });
 
+  app.post('/api/delete/success', async function (req, res, next) {
+    const { token } = req.body
+    if(token !== '')
+    Message.find({status: 2}).deleteMany({}, (err, col) => {
+      if(err) throw err;
+      console.log(col);
+    });
+    updateList();
+    res.json({msg: 'success'});
+  });
+
   // Runs when client disconnects
   socket.on("disconnect", () => {
     const user = userLeave(socket.id);
@@ -246,15 +257,10 @@ function extractData(msg) {
             data.error = 'Цэнэглэх дүн олдсонгүй';
             return data;
           }
-          console.log('amountMatch', amountMatch)
           let amountStr = amountMatch[0].replace(',', '');
-          console.log('amountStr', amountStr)
           amountStr = amountStr.replace('orlogo:', '');
-          console.log('amountStr', amountStr)
           amountStr = amountStr.replace('.00mnt', '');
-          console.log('amountStr', amountStr)
           amount = parseInt(amountStr);
-          console.log('amount', amount)
           //amount = parseInt(amountMatch[0].replaceAll(',', '').replaceAll('orlogo:', '').replaceAll('.00mnt', ''));
           // Get Username
           let expUser = /(?<=utga:).*$/;
@@ -268,12 +274,10 @@ function extractData(msg) {
           if (username.indexOf('(') > -1) {
             username = username.split('(')[0];
           }
-          username = username.replace('eb-', '')
-              .replace('mm-', '')
-              .replace('mm:', '')
-              .replace('eb-', '')
+          username = username.trim()
               .replace(' ', '')
-              .trim();
+              .replace('mm:', '')
+              .replace('eb-', '');
         } catch (error) {
           data.status = 1;
           data.error = error;
@@ -305,13 +309,11 @@ function extractData(msg) {
       if (username.indexOf('/') > -1) {
         username = username.split('/')[0];
       }
-      username = username
-          .toLowerCase()
+      username = username.trim()
+          .replace(' ', '')
           .replace('eb-', '')
-          .replace('mm-', '')
           .replace('mm:', '');
       username = username.replace(/\s?\d{2}\/\d{2}\/\d{2}\s\d{2}\:\d{2}\:\d{2}/g, '');
-      username = username.replace(' ', '');
     } catch (error) {
       data.status = 1;
       data.error = error;
