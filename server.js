@@ -192,13 +192,16 @@ io.on("connection", (socket) => {
 
   app.post('/api/delete/success', async function (req, res, next) {
     const { token } = req.body
-    if(token !== '')
-    Message.find({status: 2}).deleteMany({}, (err, col) => {
-      if(err) throw err;
-      console.log(col);
-    });
-    updateList();
-    res.json({msg: 'success'});
+    if(token === '4523bbb27f114137a4169da1c5e7fda0') {
+      Message.find({status: 2}).deleteMany({}, (err, col) => {
+        if(err) throw err;
+        console.log(col);
+      });
+      updateList();
+      res.json({msg: 'success'});
+    }else{
+      res.json({msg: 'invalid token'});
+    }
   });
 
   // Runs when client disconnects
