@@ -284,10 +284,11 @@ function extractData(msg) {
           if (username.indexOf('(') > -1) {
             username = username.split('(')[0];
           }
-          username = username.trim()
-              .replace(' ', '')
+          username = username
               .replace('mm:', '')
-              .replace('eb-', '');
+              .replace('eb-', '')
+              .replace('eb -', '')
+              .trim();
         } catch (error) {
           data.status = 1;
           data.error = error;
@@ -319,10 +320,11 @@ function extractData(msg) {
       if (username.indexOf('/') > -1) {
         username = username.split('/')[0];
       }
-      username = username.trim()
-          .replace(' ', '')
+      username = username
           .replace('eb-', '')
-          .replace('mm:', '');
+          .replace('eb -', '')
+          .replace('mm:', '')
+          .trim();
       username = username.replace(/\s?\d{2}\/\d{2}\/\d{2}\s\d{2}\:\d{2}\:\d{2}/g, '');
     } catch (error) {
       data.status = 1;
