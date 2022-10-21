@@ -1,15 +1,14 @@
 {
-  "name": "chatcord",
+  "name": "autodepositor",
   "version": "1.0.0",
-  "description": "Realtime chat app with rooms",
+  "description": "Pokertime Autodepositor",
   "main": "server.js",
   "scripts": {
     "start": "node server",
     "dev": "nodemon server"
   },
-  "author": "Brad Traversy",
+  "author": "Altangerel.D",
   "license": "MIT",
-  "proxy": "http://157.245.151.65",
   "dependencies": {
     "@socket.io/redis-adapter": "^7.1.0",
     "axios": "^1.1.3",

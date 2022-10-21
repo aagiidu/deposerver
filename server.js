@@ -3,8 +3,8 @@ const http = require("http");
 const express = require("express");
 const router = express.Router();
 
-const formatMessage = require("./utils/messages");
-const createAdapter = require("@socket.io/redis-adapter").createAdapter;
+// const formatMessage = require("./utils/messages");
+// const createAdapter = require("@socket.io/redis-adapter").createAdapter;
 const redis = require("redis");
 require("dotenv").config();
 const body_parser = require('body-parser');
@@ -24,18 +24,18 @@ const corsOptions = {
 var ObjectId = require('mongodb').ObjectID;
 const axios = require('axios');
 app.use(cors(corsOptions));
-app.use((req, res, next) => {
+/* app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "http://157.245.151.65");
   res.header(
     "Access-Control-Allow-Headers",
     "Origin, X-Requested-With, Content-Type, Accept"
   );
   next();
-});
+}); */
 const server = http.createServer(app);
 const io = require("socket.io")(server, {
   cors: {
-    origin: "http://157.245.151.65",
+    origin: "http://localhost:3000", //"http://157.245.151.65",
     methods: ["GET", "POST"]
   }
 });
@@ -229,6 +229,12 @@ io.on("connection", (socket) => {
   }
 });
 
+app.get('/api/report/:start/:end', async function (req, res) {
+  const {start, end} = req.params;
+  const messages = await Message.find({status: 2, timestamp: {$gte: start, $lte: end}}).sort({ "timestamp": -1 })
+  res.json({msg: 'success', count: messages.length, messages});
+});
+
 function extractData(msg) {
   if (msg.sender != '131917' &&
       msg.sender != '133133' &&
@@ -261,6 +267,7 @@ function extractData(msg) {
             return data;
           }
           let amountStr = amountMatch[0].replace(',', '');
+          amountStr = amountMatch[0].replace(',', '');
           amountStr = amountStr.replace('orlogo:', '');
           amountStr = amountStr.replace('.00mnt', '');
           amount = parseInt(amountStr);
@@ -297,7 +304,7 @@ function extractData(msg) {
         data.error = 'Цэнэглэх дүн олдсонгүй';
         return data;
       }
-      amount = parseInt(matchAmount[0].replace(',', '').replace('dansand', '').replace('.00mnt', ''));
+      amount = parseInt(matchAmount[0].replace(',', '').replace(',', '').replace('dansand', '').replace('.00mnt', ''));
       // Username
       username = str.match(/(.*)(?=(\n.*){1}$)/g);
       if (!username || !username[0]) {
