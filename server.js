@@ -3,12 +3,9 @@ const http = require("http");
 const express = require("express");
 const router = express.Router();
 
-// const formatMessage = require("./utils/messages");
-// const createAdapter = require("@socket.io/redis-adapter").createAdapter;
 const redis = require("redis");
 require("dotenv").config();
 const body_parser = require('body-parser');
-// const { createClient } = redis;
 const cors = require('cors');
 
 const app = express().use(body_parser.json());
@@ -83,8 +80,8 @@ demouser.username = 'Aagii';
 demouser.password = 'Pass#123';
 demouser.save(); */
 // Run when client connects
-io.on("connection", (socket) => {
 
+io.on("connection", (socket) => {
   socket.on("joinRoom", ({ username, room }) => {
     const user = userJoin(socket.id, username, room);
     socket.join(user.room);
@@ -113,7 +110,6 @@ io.on("connection", (socket) => {
   });
 
   app.get('/api/failedlist', async function (req, res, next) {
-    const {id} = req.body;
     Message.find({status: 1}).then(messages => {
       res.json({msg: 'success', messages});
     });
@@ -144,89 +140,103 @@ io.on("connection", (socket) => {
     }
   });
 
+  function updateList() {
+    console.log('UpdateList called')
+    try {
+      Message.find({status: 2}).sort({ "timestamp": -1 }).limit(50)
+      .then(messages => {
+        socket.broadcast
+          .to('Javascript')
+          .emit(
+            "successList",
+            messages
+          );
+      });
+      Message.find({status: 1}).sort({ "timestamp": -1 }).limit(50).then(messages => {
+        socket.broadcast
+          .to('Javascript')
+          .emit(
+            "failedList",
+            messages
+          );
+      });
+    } catch (error) {
+      console.log('UpdateList catch error', Object.keys(error.response))
+    }
+  }
+
   // Runs when client disconnects
   socket.on("disconnect", () => {
     const user = userLeave(socket.id);
   });
 
-  app.post('/api/newmessage', async function (req, res, next) {
-    const { sessionId } = req.body;
-    const data = extractData(req.body)
-    console.log('ExtractedData', data);
-    if(data.status !== 2){
-      const doc = new Message();
-      await doc.save(); 
+});
+
+app.post('/api/newmessage', async function (req, res, next) {
+  const { sessionId } = req.body;
+  const data = extractData(req.body)
+  console.log('ExtractedData', data);
+  if(data.status !== 2){
+    const doc = new Message();
+    await doc.save(); 
+    doc.ConfirmationId = '';
+    doc.amount = data.amount;
+    doc.username = data.username;
+    doc.errorText = data.error;
+    doc.status = 1;
+    doc.sender = data.sender;
+    doc.body = data.body;
+    doc.timestamp = data.timestamp;
+    await doc.save();
+    try {
+      await axios.get('http://157.245.151.65:5000/api/refresh')
+    } catch (error) {
+      console.log('socket is offline')
+    }
+    return res.json({msg: 'success'})
+  }
+  const doc = new Message();
+  await doc.save(); 
+  try {
+    const res = await axios.get(`${baseUrl}/Deposit?username=${data.username}&amount=${data.amount}&sessionId=${sessionId}`);
+    if (res.data['ConfirmationId'] != null) {
+      doc.ConfirmationId = res.data['ConfirmationId'];
+      doc.amount = data.amount;
+      doc.username = data.username;
+      doc.errorText = '';
+      doc.status = 2;
+      doc.sender = data.sender;
+      doc.body = data.body;
+      doc.timestamp = data.timestamp;
+      await doc.save();
+    } else {
       doc.ConfirmationId = '';
       doc.amount = data.amount;
       doc.username = data.username;
-      doc.errorText = data.error;
+      doc.errorText = res.data["Error"];
       doc.status = 1;
       doc.sender = data.sender;
       doc.body = data.body;
       doc.timestamp = data.timestamp;
       await doc.save();
-      updateList();
-      res.json({msg: 'success'})
-    } else {
-      const doc = new Message();
-      await doc.save(); 
-      try {
-        const res = await axios.get(`${baseUrl}/Deposit?username=${data.username}&amount=${data.amount}&sessionId=${sessionId}`);
-        if (res.data['ConfirmationId'] != null) {
-          doc.ConfirmationId = res.data['ConfirmationId'];
-          doc.amount = data.amount;
-          doc.username = data.username;
-          doc.errorText = '';
-          doc.status = 2;
-          doc.sender = data.sender;
-          doc.body = data.body;
-          doc.timestamp = data.timestamp;
-          await doc.save();
-        } else {
-          doc.ConfirmationId = '';
-          doc.amount = data.amount;
-          doc.username = data.username;
-          doc.errorText = res.data["Error"];
-          doc.status = 1;
-          doc.sender = data.sender;
-          doc.body = data.body;
-          doc.timestamp = data.timestamp;
-          await doc.save();
-        }
-      } catch (error) {
-        doc.ConfirmationId = '';
-        doc.amount = data.amount;
-        doc.username = data.username;
-        doc.errorText = error.response.data["Error"];
-        doc.status = 1;
-        doc.sender = data.sender;
-        doc.body = data.body;
-        doc.timestamp = data.timestamp;
-        await doc.save();
-      } finally {
-        updateList();
-        res.json({msg: 'success'})
-      }
     }
-  });
-
-  function updateList() {
-    Message.find({status: 2}).sort({ "timestamp": -1 }).limit(100).then(messages => {
-      socket.broadcast
-        .to('Javascript')
-        .emit(
-          "successList",
-          messages
-        );
-    });
-    Message.find({status: 1}).sort({ "timestamp": -1 }).limit(100).then(messages => {
-      socket.broadcast
-        .to('Javascript')
-        .emit(
-          "failedList",
-          messages
-        );
-    });
+  } catch (error) {
+    doc.ConfirmationId = '';
+    doc.amount = data.amount;
+    doc.username = data.username;
+    doc.errorText = error.response.data["Error"];
+    doc.status = 1;
+    doc.sender = data.sender;
+    doc.body = data.body;
+    doc.timestamp = data.timestamp;
+    await doc.save();
+  } finally {
+    try {
+      await axios.get('http://157.245.151.65:5000/api/refresh') 
+    } catch (error) {
+      console.log('socket is offline')
+    }
+    return res.json({msg: 'success'})
   }
 });
 
