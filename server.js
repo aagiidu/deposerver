@@ -22,7 +22,7 @@ var ObjectId = require('mongodb').ObjectID;
 const axios = require('axios');
 app.use(cors(corsOptions));
 app.use((req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", "http://157.245.151.65");
+  res.setHeader("Access-Control-Allow-Origin", "https://autodepositor.com");
   res.header(
     "Access-Control-Allow-Headers",
     "Origin, X-Requested-With, Content-Type, Accept"
@@ -32,14 +32,14 @@ app.use((req, res, next) => {
 const server = http.createServer(app);
 const io = require("socket.io")(server, {
   cors: {
-    origin: "http://157.245.151.65", // "http://localhost:3000",
+    origin: "https://autodepositor.com", // "http://localhost:3000", //"http://157.245.151.65", // "http://localhost:3000",
     methods: ["GET", "POST"]
   }
 });
 const baseUrl = 'https://game.pokertime.one';
 // const io = socketio(server);
 require("./models/Message");
-require("./models/User");
+require("./models/ErrorLog");
 
 const mongoose = require("mongoose");
 
@@ -59,7 +59,8 @@ mongoose.connection.once("open", () => {
 });
 
 const Message = mongoose.model("Message");
-const User = mongoose.model("User");
+const ErrorLog = mongoose.model("ErrorLog");
+// const User = mongoose.model("User");
 // app.use(cors())
 // Set static folder
 // app.use(express.static(path.join(__dirname, "public")));
@@ -143,7 +144,7 @@ io.on("connection", (socket) => {
   function updateList() {
     console.log('UpdateList called')
     try {
-      Message.find({status: 2}).sort({ "timestamp": -1 }).limit(50)
+      Message.find({status: 2}).sort({ "timestamp": -1 }).limit(30)
       .then(messages => {
         socket.broadcast
           .to('Javascript')
@@ -152,7 +153,7 @@ io.on("connection", (socket) => {
             messages
           );
       });
-      Message.find({status: 1}).sort({ "timestamp": -1 }).limit(50).then(messages => {
+      Message.find({status: 1}).sort({ "timestamp": -1 }).limit(30).then(messages => {
         socket.broadcast
           .to('Javascript')
           .emit(
@@ -172,13 +173,30 @@ io.on("connection", (socket) => {
 
 });
 
-app.post('/api/newmessage', async function (req, res, next) {
+app.post('/api/webhook', async function (req, res) {
+  const data = req.body;
+  console.log('Webhook', data);
+  const doc = new Message();
+  await doc.save(); 
+  doc.ConfirmationId = '';
+  doc.amount = data.amount;
+  doc.username = data.username;
+  doc.errorText = data.error ? data.error : '';
+  doc.status = data.status;
+  doc.sender = data.app;
+  doc.body = data.smsBody;
+  doc.timestamp = data.timestamp;
+  await doc.save();
+  return res.json({result: 'success'});
+});
+
+app.post('/api/newmessage', async function (req, res) {
   const { sessionId } = req.body;
+  const doc = new Message();
+  await doc.save(); 
   const data = extractData(req.body)
   console.log('ExtractedData', data);
   if(data.status !== 2){
-    const doc = new Message();
-    await doc.save(); 
     doc.ConfirmationId = '';
     doc.amount = data.amount;
     doc.username = data.username;
@@ -192,14 +210,21 @@ app.post('/api/newmessage', async function (req, res, next) {
       await axios.get('http://157.245.151.65:5000/api/refresh')
     } catch (error) {
       console.log('socket is offline')
+      const err = new ErrorLog();
+      err.amount = data.amount;
+      err.username = data.username;
+      err.body = data.body;
+      err.sender = data.sender;
+      err.timestamp = data.timestamp;
+      err.location = '#1';
+      err.errorText = 'socket is offline';
+      await err.save();
     }
     return res.json({msg: 'success'})
   }
-  const doc = new Message();
-  await doc.save(); 
   try {
     const res = await axios.get(`${baseUrl}/Deposit?username=${data.username}&amount=${data.amount}&sessionId=${sessionId}`);
-    if (res.data['ConfirmationId'] != null) {
+    if (res && res.data && res.data['ConfirmationId'] != null) {
       doc.ConfirmationId = res.data['ConfirmationId'];
       doc.amount = data.amount;
       doc.username = data.username;
@@ -210,21 +235,36 @@ app.post('/api/newmessage', async function (req, res, next) {
       doc.timestamp = data.timestamp;
       await doc.save();
     } else {
-      doc.ConfirmationId = '';
-      doc.amount = data.amount;
-      doc.username = data.username;
-      doc.errorText = res.data["Error"];
-      doc.status = 1;
-      doc.sender = data.sender;
-      doc.body = data.body;
-      doc.timestamp = data.timestamp;
-      await doc.save();
+      const login = await axios.get(`${baseUrl}/Login?username=autodepo2&password=qwerty123`);
+      if(login.data['SessionId']){
+        let newId = login.data['SessionId'];
+        const newDepo = await axios.get(`${baseUrl}/Deposit?username=${data.username}&amount=${data.amount}&sessionId=${newId}`);
+        doc.ConfirmationId = newDepo.data['ConfirmationId'];
+        doc.amount = data.amount;
+        doc.username = data.username;
+        doc.errorText = '';
+        doc.status = 2;
+        doc.sender = data.sender;
+        doc.body = data.body;
+        doc.timestamp = data.timestamp;
+        await doc.save();
+      }else{
+        doc.ConfirmationId = '';
+        doc.amount = data.amount;
+        doc.username = data.username;
+        doc.errorText = res && res.data && res.data["Error"] ? res.data["Error"] : 'Login bolsongui';
+        doc.status = 1;
+        doc.sender = data.sender;
+        doc.body = data.body;
+        doc.timestamp = data.timestamp;
+        await doc.save();
+      }
     }
   } catch (error) {
     doc.ConfirmationId = '';
     doc.amount = data.amount;
     doc.username = data.username;
-    doc.errorText = error.response.data["Error"];
+    doc.errorText = error.response.data ? error.response.data["Error"] : 'catch error';
     doc.status = 1;
     doc.sender = data.sender;
     doc.body = data.body;
@@ -235,6 +275,15 @@ app.post('/api/newmessage', async function (req, res, next) {
       await axios.get('http://157.245.151.65:5000/api/refresh') 
     } catch (error) {
       console.log('socket is offline')
+      const err = new ErrorLog();
+      err.amount = data.amount;
+      err.username = data.username;
+      err.body = data.body;
+      err.sender = data.sender;
+      err.timestamp = data.timestamp;
+      err.location = '#2';
+      err.errorText = 'socket is offline';
+      await err.save();
     }
     return res.json({msg: 'success'})
   }
