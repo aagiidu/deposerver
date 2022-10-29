@@ -187,6 +187,11 @@ app.post('/api/webhook', async function (req, res) {
   doc.body = data.smsBody;
   doc.timestamp = data.timestamp;
   await doc.save();
+  try {
+    await axios.get('https://autodepositor.com/api/refresh')
+  } catch (error) {
+    console.log('webhook refresh error')
+  }
   return res.json({result: 'success'});
 });
 
