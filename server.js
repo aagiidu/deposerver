@@ -63,7 +63,7 @@ const ErrorLog = mongoose.model("ErrorLog");
 // const User = mongoose.model("User");
 // app.use(cors())
 // Set static folder
-// app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join(__dirname, "public")));
 
 const {
   userJoin,
@@ -171,6 +171,10 @@ io.on("connection", (socket) => {
     const user = userLeave(socket.id);
   });
 
+});
+app.get('/', async function (req, res, next) {
+  updateList();
+  res.json({msg: 'success'});
 });
 
 app.post('/api/webhook', async function (req, res) {
