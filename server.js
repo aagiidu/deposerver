@@ -159,23 +159,24 @@ io.on("connection", (socket) => {
   function updateList() {
     console.log('UpdateList called')
     try {
-      Message.find({status: 2}).sort({ "timestamp": -1 }).limit(30)
-      .then(messages => {
-        socket.broadcast
-          .to('Javascript')
-          .emit(
-            "successList",
-            messages
-          );
-      });
-      Message.find({status: 1}).sort({ "timestamp": -1 }).limit(30).then(messages => {
-        socket.broadcast
-          .to('Javascript')
-          .emit(
-            "failedList",
-            messages
-          );
-      });
+      Message.find({status: 2, sender: {$ne : "onepoker"}}).sort({ "timestamp": -1}).limit(30)
+        .then(messages => {
+          socket.broadcast
+            .to('pokertime')
+            .emit(
+              "successList",
+              messages
+            );
+        });
+      Message.find({status: 1, sender: {$ne : "onepoker"}}).sort({ "timestamp": -1 }).limit(30)
+        .then(messages => {
+          socket.broadcast
+            .to('pokertime')
+            .emit(
+              "failedList",
+              messages
+            );
+        });
     } catch (error) {
       console.log('UpdateList catch error', Object.keys(error.response))
     }
