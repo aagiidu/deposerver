@@ -21,19 +21,34 @@ const corsOptions = {
 var ObjectId = require('mongodb').ObjectID;
 const axios = require('axios');
 app.use(cors(corsOptions));
-app.use((req, res, next) => {
+
+/* app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "http://157.245.151.65");
   res.header(
     "Access-Control-Allow-Headers",
     "Origin, X-Requested-With, Content-Type, Accept"
   );
   next();
+}); */
+
+app.use((req, res, next) => {
+  /* const allowedOrigins = ["http://157.245.151.65", "https://autodepositor.com", 'http://localhost:3000'];
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+       res.setHeader('Access-Control-Allow-Origin', origin);
+  } */
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Credentials', true);
+  next();
 });
+
 const server = http.createServer(app);
 const io = require("socket.io")(server, {
   cors: {
-    origin: "http://157.245.151.65", // "http://localhost:3000", //"http://157.245.151.65", // "http://localhost:3000",
-    methods: ["GET", "POST"]
+    origin: '*', // ["http://157.245.151.65", "https://autodepositor.com"], // "http://localhost:3000", //"http://157.245.151.65", // "http://localhost:3000",
+    methods: ["GET", "POST", "PUT", "OPTIONS"]
   }
 });
 const baseUrl = 'https://game.pokertime.one';
@@ -412,6 +427,13 @@ function extractData(msg) {
   data.amount = amount;
   return data;
 }
+
+app.get('/api/callback/:username/:amount', async function (req, res) {
+  const {start, end} = req.params;
+  /* const messages = await  */
+  const messages = await Message.find({timestamp: {$gte: start, $lte: end}}).sort({ "timestamp": -1 });
+  res.json({msg: 'success', messages});  
+});
 
 const PORT = process.env.PORT || 5000;
 
