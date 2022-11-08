@@ -101,7 +101,11 @@ io.on("connection", (socket) => {
   socket.on("joinRoom", ({ username, room }) => {
     const user = userJoin(socket.id, username, room);
     socket.join(user.room);
-    updateList();
+    if(room == 'one'){
+      updateOneList();
+    }else{
+      updateList();
+    }
   });
 
   // Listen for chatMessage
@@ -131,25 +135,44 @@ io.on("connection", (socket) => {
     });
   });
 
-  app.get('/api/refresh', async function (req, res, next) {
+  app.get('/api/refresh/time', async function (req, res, next) {
     updateList();
     res.json({msg: 'success'});
   });
 
+  app.get('/api/refresh/one', async function (req, res, next) {
+    updateOneList();
+    res.json({msg: 'success'});
+  });
+
   app.post('/api/search', async function (req, res, next) {
-    const { username } = req.body
-    const searchList = await Message.find({username});
+    const { username, app } = req.body
+    let searchList =[];
+    if(app == 'one'){
+      searchList = await Message.find({sender: "onepoker", username});
+    }else{
+      searchList = await Message.find({sender: {$ne: "onepoker"}, username});
+    }
     res.json({msg: 'success', searchList});
   });
 
   app.post('/api/delete/success', async function (req, res, next) {
-    const { token } = req.body
+    const { token, app } = req.body
     if(token === '4523bbb27f114137a4169da1c5e7fda0') {
-      Message.find({status: 2}).deleteMany({}, (err, col) => {
-        if(err) throw err;
-        console.log(col);
-      });
-      updateList();
+      if(app == 'one'){
+        Message.find({sender: "onepoker", status: 2}).deleteMany({}, (err, col) => {
+          if(err) throw err;
+          console.log(col);
+        });
+        updateOneList();
+      }else{
+        Message.find({sender: {$ne: "onepoker"}, status: 2}).deleteMany({}, (err, col) => {
+          if(err) throw err;
+          console.log(col);
+        });
+        updateList();
+      }
+      
       res.json({msg: 'success'});
     }else{
       res.json({msg: 'invalid token'});
@@ -162,7 +185,7 @@ io.on("connection", (socket) => {
       Message.find({status: 2, sender: {$ne : "onepoker"}}).sort({ "timestamp": -1}).limit(30)
         .then(messages => {
           socket.broadcast
-            .to('pokertime')
+            .to('time')
             .emit(
               "successList",
               messages
@@ -171,7 +194,33 @@ io.on("connection", (socket) => {
       Message.find({status: 1, sender: {$ne : "onepoker"}}).sort({ "timestamp": -1 }).limit(30)
         .then(messages => {
           socket.broadcast
-            .to('pokertime')
+            .to('time')
+            .emit(
+              "failedList",
+              messages
+            );
+        });
+    } catch (error) {
+      console.log('UpdateList catch error', Object.keys(error.response))
+    }
+  }
+
+  function updateOneList() {
+    console.log('UpdateList called')
+    try {
+      Message.find({status: 2, sender: "onepoker"}).sort({ "timestamp": -1}).limit(30)
+        .then(messages => {
+          socket.broadcast
+            .to('one')
+            .emit(
+              "successList",
+              messages
+            );
+        });
+      Message.find({status: 1, sender: "onepoker"}).sort({ "timestamp": -1 }).limit(30)
+        .then(messages => {
+          socket.broadcast
+            .to('one')
             .emit(
               "failedList",
               messages
@@ -208,7 +257,7 @@ app.post('/api/webhook', async function (req, res) {
   doc.timestamp = data.timestamp;
   await doc.save();
   try {
-    await axios.get('https://autodepositor.com/api/refresh')
+    await axios.get('https://autodepositor.com/api/refresh/one')
   } catch (error) {
     console.log('webhook refresh error')
   }
@@ -232,7 +281,7 @@ app.post('/api/newmessage', async function (req, res) {
     doc.timestamp = data.timestamp;
     await doc.save();
     try {
-      await axios.get('https://autodepositor.com/api/refresh')
+      await axios.get('https://autodepositor.com/api/refresh/time')
     } catch (error) {
       console.log('socket is offline')
       const err = new ErrorLog();
@@ -297,7 +346,7 @@ app.post('/api/newmessage', async function (req, res) {
     await doc.save();
   } finally {
     try {
-      await axios.get('https://autodepositor.com/api/refresh') 
+      await axios.get('https://autodepositor.com/api/refresh/time') 
     } catch (error) {
       console.log('socket is offline')
       const err = new ErrorLog();
@@ -314,10 +363,15 @@ app.post('/api/newmessage', async function (req, res) {
   }
 });
 
-app.get('/api/report/:start/:end', async function (req, res) {
-  const {start, end} = req.params;
+app.get('/api/report/:start/:end/:app', async function (req, res) {
+  const {start, end, app} = req.params;
   /* const messages = await  */
-  const messages = await Message.find({timestamp: {$gte: start, $lte: end}}).sort({ "timestamp": -1 });
+  let messages = [];
+  if(app == 'one'){
+    messages = await Message.find({sender: "onepoker", timestamp: {$gte: start, $lte: end}}).sort({ "timestamp": -1 });
+  } else {
+    messages = await Message.find({sender: {$ne: "onepoker"}, timestamp: {$gte: start, $lte: end}}).sort({ "timestamp": -1 });
+  }
   res.json({msg: 'success', messages});  
 });
 
@@ -429,10 +483,14 @@ function extractData(msg) {
   return data;
 }
 
-app.get('/api/callback/:username/:amount', async function (req, res) {
-  const {start, end} = req.params;
-  /* const messages = await  */
-  const messages = await Message.find({timestamp: {$gte: start, $lte: end}}).sort({ "timestamp": -1 });
+app.get('/api/callback/:username/:amount/:app', async function (req, res) {
+  const {start, end, app} = req.params;
+  let messages = [];
+  if(app == 'one'){
+    messages = await Message.find({sender: "onepoker", timestamp: {$gte: start, $lte: end}}).sort({ "timestamp": -1 });
+  } else {
+    messages = await Message.find({sender: {$ne: "onepoker"}, timestamp: {$gte: start, $lte: end}}).sort({ "timestamp": -1 });
+  }
   res.json({msg: 'success', messages});  
 });
 
