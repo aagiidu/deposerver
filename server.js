@@ -22,6 +22,8 @@ var ObjectId = require('mongodb').ObjectID;
 const axios = require('axios');
 app.use(cors(corsOptions));
 
+const api = 'http://157.245.151.65:5000';
+
 /* app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "http://157.245.151.65");
   res.header(
@@ -257,7 +259,7 @@ app.post('/api/webhook', async function (req, res) {
   doc.timestamp = data.timestamp;
   await doc.save();
   try {
-    await axios.get('https://autodepositor.com/api/refresh/one')
+    await axios.get(`${api}/api/refresh/one`)
   } catch (error) {
     console.log('webhook refresh error')
   }
@@ -281,7 +283,7 @@ app.post('/api/newmessage', async function (req, res) {
     doc.timestamp = data.timestamp;
     await doc.save();
     try {
-      await axios.get('https://autodepositor.com/api/refresh/time')
+      await axios.get(`${api}/api/refresh/time`)
     } catch (error) {
       console.log('socket is offline')
       const err = new ErrorLog();
@@ -346,7 +348,7 @@ app.post('/api/newmessage', async function (req, res) {
     await doc.save();
   } finally {
     try {
-      await axios.get('https://autodepositor.com/api/refresh/time') 
+      await axios.get(`${api}/api/refresh/time`) 
     } catch (error) {
       console.log('socket is offline')
       const err = new ErrorLog();
