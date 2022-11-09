@@ -573,17 +573,6 @@ function extractData(msg) {
   return data;
 }
 
-app.get('/api/callback/:username/:amount/:app', async function (req, res) {
-  const {start, end, app} = req.params;
-  let messages = [];
-  if(app == 'one'){
-    messages = await Message.find({sender: "onepoker", timestamp: {$gte: start, $lte: end}}).sort({ "timestamp": -1 });
-  } else {
-    messages = await Message.find({sender: {$ne: "onepoker"}, timestamp: {$gte: start, $lte: end}}).sort({ "timestamp": -1 });
-  }
-  res.json({msg: 'success', messages});  
-});
-
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
