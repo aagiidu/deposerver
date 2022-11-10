@@ -485,7 +485,7 @@ function extractData(msg) {
   return data;
 }
 
-app.get('/api/callback/:username/:amount/:id', async function (req, res) {
+app.get('/api/callback/:username/:amount/:id/:mnt', async function (req, res) {
   const {username, amount, id} = req.params;
   console.log('callback: ', username, amount, id);
   return res.json({result: 'success'});
