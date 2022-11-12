@@ -338,6 +338,11 @@ app.post('/api/newmessage', async function (req, res) {
           if(messages.length > 0){
             messages[messages.length - 1].body = data.body;
             messages[messages.length - 1].save();
+            try {
+              await axios.get(`${api}/api/refresh/time`);
+            } catch (error) {
+              console.log('344', error)
+            }
           } else {
             const doc = new Message();
             await doc.save(); 
