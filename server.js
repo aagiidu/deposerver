@@ -241,12 +241,15 @@ io.on("connection", (socket) => {
 });
 app.get('/', async function (req, res, next) {
   updateList();
-  res.json({msg: 'success'});
+  return res.json({msg: 'success'});
 });
 
 app.post('/api/webhook', async function (req, res) {
   const data = req.body;
   console.log('Webhook', data);
+  if(!data.username){
+    return res.json({result: 'empty'});
+  }
   const doc = new Message();
   await doc.save(); 
   doc.ConfirmationId = '';
@@ -266,13 +269,36 @@ app.post('/api/webhook', async function (req, res) {
   return res.json({result: 'success'});
 });
 
-app.post('/api/newmessage', async function (req, res) {
-  const { sessionId } = req.body;
+app.get('/api/callback/:username/:amount/:id/:mnt', async function (req, res) {
+  const {username, amount, id, mnt} = req.params;
+  console.log('callback: ', username, amount, id, mnt);
+  const d = new Date();
   const doc = new Message();
   await doc.save(); 
-  const data = extractData(req.body)
+  doc.ConfirmationId = 0;
+  doc.amount = amount;
+  doc.username = username;
+  doc.errorText = '';
+  doc.status = 2;
+  doc.sender = 'pokertime';
+  doc.body = id;
+  doc.timestamp = d.getTime();
+  await doc.save();
+  try {
+    await axios.get(`${api}/api/refresh/time`)
+  } catch (error) {
+    console.log('callback refresh error')
+  }
+  return res.json({result: 'success'});
+});
+
+app.post('/api/newmessage', async function (req, res) {
+  const data = extractData(req.body);
   console.log('ExtractedData', data);
+  //return res.json({result: data});
   if(data.status !== 2){
+    const doc = new Message();
+    await doc.save(); 
     doc.ConfirmationId = '';
     doc.amount = data.amount;
     doc.username = data.username;
@@ -297,72 +323,35 @@ app.post('/api/newmessage', async function (req, res) {
       await err.save();
     }
     return res.json({msg: 'success'})
-  }
-  try {
-    const res = await axios.get(`${baseUrl}/Deposit?username=${data.username}&amount=${data.amount}&sessionId=${sessionId}`);
-    if (res && res.data && res.data['ConfirmationId'] != null) {
-      doc.ConfirmationId = res.data['ConfirmationId'];
-      doc.amount = data.amount;
-      doc.username = data.username;
-      doc.errorText = '';
-      doc.status = 2;
-      doc.sender = data.sender;
-      doc.body = data.body;
-      doc.timestamp = data.timestamp;
-      await doc.save();
-    } else {
-      const login = await axios.get(`${baseUrl}/Login?username=autodepo2&password=qwerty123`);
-      if(login.data['SessionId']){
-        let newId = login.data['SessionId'];
-        const newDepo = await axios.get(`${baseUrl}/Deposit?username=${data.username}&amount=${data.amount}&sessionId=${newId}`);
-        doc.ConfirmationId = newDepo.data['ConfirmationId'];
-        doc.amount = data.amount;
-        doc.username = data.username;
-        doc.errorText = '';
-        doc.status = 2;
-        doc.sender = data.sender;
-        doc.body = data.body;
-        doc.timestamp = data.timestamp;
-        await doc.save();
-      }else{
+  } else {
+    console.log('Amjilttai');
+    setTimeout(async () => {
+      const now = new Date();
+      const end = now.getTime();
+      const start = end - 1000 * 60 * 10;
+      const messages = await Message.find({sender: {$ne: "onepoker"}, username: data.username, amount: data.amount, timestamp: {$gte: start, $lte: end}}).sort({ "timestamp": -1 });
+      console.log('SuccessCheck', messages);
+      if(messages.length == 0){
+        const doc = new Message();
+        await doc.save(); 
         doc.ConfirmationId = '';
         doc.amount = data.amount;
         doc.username = data.username;
-        doc.errorText = res && res.data && res.data["Error"] ? res.data["Error"] : 'Login bolsongui';
+        doc.errorText = 'Амжилтгүй';
         doc.status = 1;
         doc.sender = data.sender;
         doc.body = data.body;
         doc.timestamp = data.timestamp;
         await doc.save();
+        try {
+          await axios.get(`${api}/api/refresh/time`);
+        } catch (error) {
+          console.log('348', error)
+        }
       }
-    }
-  } catch (error) {
-    doc.ConfirmationId = '';
-    doc.amount = data.amount;
-    doc.username = data.username;
-    doc.errorText = error.response.data ? error.response.data["Error"] : 'catch error';
-    doc.status = 1;
-    doc.sender = data.sender;
-    doc.body = data.body;
-    doc.timestamp = data.timestamp;
-    await doc.save();
-  } finally {
-    try {
-      await axios.get(`${api}/api/refresh/time`) 
-    } catch (error) {
-      console.log('socket is offline')
-      const err = new ErrorLog();
-      err.amount = data.amount;
-      err.username = data.username;
-      err.body = data.body;
-      err.sender = data.sender;
-      err.timestamp = data.timestamp;
-      err.location = '#2';
-      err.errorText = 'socket is offline';
-      await err.save();
-    }
-    return res.json({msg: 'success'})
+    }, 3000);
   }
+  
 });
 
 app.get('/api/report/:start/:end/:app', async function (req, res) {
@@ -484,30 +473,6 @@ function extractData(msg) {
   data.amount = amount;
   return data;
 }
-
-app.get('/api/callback/:username/:amount/:id/:mnt', async function (req, res) {
-  const {username, amount, id} = req.params;
-  console.log('callback: ', username, amount, id);
-  return res.json({result: 'success'});
-  const d = new Date();
-  const doc = new Message();
-  await doc.save(); 
-  doc.ConfirmationId = 0;
-  doc.amount = amount;
-  doc.username = username;
-  doc.errorText = '';
-  doc.status = 2;
-  doc.sender = 'pokertime';
-  doc.body = id;
-  doc.timestamp = d.getTime();
-  await doc.save();
-  try {
-    await axios.get(`${api}/api/refresh/time`)
-  } catch (error) {
-    console.log('callback refresh error')
-  }
-  return res.json({result: 'success'});
-});
 
 const PORT = process.env.PORT || 5000;
 
