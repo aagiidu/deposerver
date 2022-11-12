@@ -335,7 +335,10 @@ app.post('/api/newmessage', async function (req, res) {
         .sort({ "timestamp": -1 }).then(async messages => {
           console.log('SuccessCheck', messages);
           console.log('username: ', data.username, 'amount:', data.amount, '$gte:', start, '$lte:', end);
-          if(messages.length == 0){
+          if(messages.length > 0){
+            messages[messages.length - 1].body = data.body;
+            messages[messages.length - 1].save();
+          } else {
             const doc = new Message();
             await doc.save(); 
             doc.ConfirmationId = '';
