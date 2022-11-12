@@ -361,8 +361,8 @@ app.post('/api/newmessage', async function (req, res) {
 
 app.get('/api/delete/:from/:to', async function (req, res) {
   const {from, to} = req.params;
-
-  Message.find({sender: "onepoker", status: 1, timestamp: {$gte: from, $lte: to}}).deleteMany({}, (err, col) => {
+  console.log('delete api');
+  Message.find({sender: {$ne: "onepoker"}, status: 1, timestamp: {$gte: from, $lte: to}}).deleteMany({}, (err, col) => {
     if(err) throw err;
     console.log(col);
   });
