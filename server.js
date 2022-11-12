@@ -327,8 +327,8 @@ app.post('/api/newmessage', async function (req, res) {
     console.log('Amjilttai');
     setTimeout(async () => {
       const now = new Date();
-      const end = now.getTime();
-      const start = end - 1000 * 60 * 10;
+      const end = now.getTime() + 10000;
+      const start = end - 1000 * 60 * 5;
       const messages = await Message.find({sender: {$ne: "onepoker"}, username: data.username, amount: data.amount, timestamp: {$gte: start, $lte: end}}).sort({ "timestamp": -1 });
       console.log('SuccessCheck', messages);
       if(messages.length == 0){
@@ -349,7 +349,7 @@ app.post('/api/newmessage', async function (req, res) {
           console.log('348', error)
         }
       }
-    }, 3000);
+    }, 5000);
   }
   
 });
