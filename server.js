@@ -359,6 +359,17 @@ app.post('/api/newmessage', async function (req, res) {
   
 });
 
+app.get('/api/delete/:from/:to', async function (req, res) {
+  const {from, to} = req.params;
+
+  Message.find({sender: "onepoker", status: 1, timestamp: {$gte: from, $lte: to}}).deleteMany({}, (err, col) => {
+    if(err) throw err;
+    console.log(col);
+  });
+
+  res.json({msg: 'success'});  
+});
+
 app.get('/api/report/:start/:end/:app', async function (req, res) {
   const {start, end, app} = req.params;
   /* const messages = await  */
