@@ -329,27 +329,29 @@ app.post('/api/newmessage', async function (req, res) {
       const now = new Date();
       const end = now.getTime() + 10000;
       const start = end - 1000 * 60 * 5;
-      const messages = await Message.find({sender: {$ne: "onepoker"}, username: data.username, amount: data.amount, timestamp: {$gte: start, $lte: end}}).sort({ "timestamp": -1 });
-      console.log('SuccessCheck', messages);
-      console.log('username: ', data.username, 'amount:', data.amount, '$gte:', start, '$lte:', end);
-      if(messages.length == 0){
-        const doc = new Message();
-        await doc.save(); 
-        doc.ConfirmationId = '';
-        doc.amount = data.amount;
-        doc.username = data.username;
-        doc.errorText = 'Амжилтгүй';
-        doc.status = 1;
-        doc.sender = data.sender;
-        doc.body = data.body;
-        doc.timestamp = data.timestamp;
-        await doc.save();
-        try {
-          await axios.get(`${api}/api/refresh/time`);
-        } catch (error) {
-          console.log('348', error)
-        }
-      }
+      await Message.find({sender: {$ne: "onepoker"}, username: data.username, amount: data.amount, timestamp: {$gte: start, $lte: end}})
+        .sort({ "timestamp": -1 }).then(async messages => {
+          console.log('SuccessCheck', messages);
+          console.log('username: ', data.username, 'amount:', data.amount, '$gte:', start, '$lte:', end);
+          if(messages.length == 0){
+            const doc = new Message();
+            await doc.save(); 
+            doc.ConfirmationId = '';
+            doc.amount = data.amount;
+            doc.username = data.username;
+            doc.errorText = 'Амжилтгүй';
+            doc.status = 1;
+            doc.sender = data.sender;
+            doc.body = data.body;
+            doc.timestamp = data.timestamp;
+            await doc.save();
+            try {
+              await axios.get(`${api}/api/refresh/time`);
+            } catch (error) {
+              console.log('348', error)
+            }
+          }
+        });
     }, 5000);
   }
   
