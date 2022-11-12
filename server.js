@@ -329,7 +329,7 @@ app.post('/api/newmessage', async function (req, res) {
       const now = new Date();
       const end = now.getTime() + 10000;
       const start = end - 1000 * 60 * 5;
-      await Message.find({sender: {$ne: "onepoker"}, username: {$regex: /${data.username}/i}, amount: data.amount, timestamp: {$gte: start, $lte: end}})
+      await Message.find({sender: {$ne: "onepoker"}, username: {$regex: `/${data.username}/i`}, amount: data.amount, timestamp: {$gte: start, $lte: end}})
         .sort({ "timestamp": -1 }).then(async messages => {
           console.log('SuccessCheck', messages);
           console.log('username: ', data.username, 'amount:', data.amount, '$gte:', start, '$lte:', end);
