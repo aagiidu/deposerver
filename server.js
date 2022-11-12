@@ -331,6 +331,7 @@ app.post('/api/newmessage', async function (req, res) {
       const start = end - 1000 * 60 * 5;
       const messages = await Message.find({sender: {$ne: "onepoker"}, username: data.username, amount: data.amount, timestamp: {$gte: start, $lte: end}}).sort({ "timestamp": -1 });
       console.log('SuccessCheck', messages);
+      console.log('username: ', data.username, 'amount:', data.amount, '$gte:', start, '$lte:', end);
       if(messages.length == 0){
         const doc = new Message();
         await doc.save(); 
