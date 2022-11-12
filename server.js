@@ -246,7 +246,7 @@ app.get('/', async function (req, res, next) {
 
 app.post('/api/webhook', async function (req, res) {
   const data = req.body;
-  console.log('Webhook', data);
+  //console.log('Webhook', data);
   if(!data.username){
     return res.json({result: 'empty'});
   }
@@ -271,7 +271,7 @@ app.post('/api/webhook', async function (req, res) {
 
 app.get('/api/callback/:username/:amount/:id/:mnt', async function (req, res) {
   const {username, amount, id, mnt} = req.params;
-  console.log('callback: ', username, amount, id, mnt);
+  //console.log('callback: ', username, amount, id, mnt);
   const d = new Date();
   const doc = new Message();
   await doc.save(); 
@@ -294,7 +294,7 @@ app.get('/api/callback/:username/:amount/:id/:mnt', async function (req, res) {
 
 app.post('/api/newmessage', async function (req, res) {
   const data = extractData(req.body);
-  console.log('ExtractedData', data);
+  //console.log('ExtractedData', data);
   //return res.json({result: data});
   if(data.status !== 2){
     const doc = new Message();
@@ -352,7 +352,7 @@ app.post('/api/newmessage', async function (req, res) {
             }
           }
         });
-    }, 5000);
+    }, 10000);
   }
   
 });
