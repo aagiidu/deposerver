@@ -422,7 +422,7 @@ function extractData(msg) {
             return data;
           }
           let amountStr = amountMatch[0].replace(',', '');
-          amountStr = amountMatch[0].replace(',', '');
+          amountStr = amountStr.replace(',', '');
           amountStr = amountStr.replace('orlogo:', '');
           amountStr = amountStr.replace('.00mnt', '');
           amount = parseInt(amountStr);
