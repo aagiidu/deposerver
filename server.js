@@ -362,7 +362,8 @@ app.post('/api/newmessage', async function (req, res) {
             }
           }
         });
-    }, 5000);
+    }, 3000);
+    return res.json({msg: 'success'})
   }
   
 });
