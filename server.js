@@ -57,6 +57,7 @@ const baseUrl = 'https://game.pokertime.one';
 // const io = socketio(server);
 require("./models/Message");
 require("./models/ErrorLog");
+require("./models/Ping");
 
 const mongoose = require("mongoose");
 
@@ -77,6 +78,7 @@ mongoose.connection.once("open", () => {
 
 const Message = mongoose.model("Message");
 const ErrorLog = mongoose.model("ErrorLog");
+const Ping = mongoose.model("Ping");
 // const User = mongoose.model("User");
 // app.use(cors())
 // Set static folder
@@ -362,7 +364,7 @@ app.post('/api/newmessage', async function (req, res) {
             }
           }
         });
-    }, 3000);
+    }, 8000);
     return res.json({msg: 'success'})
   }
   
@@ -378,6 +380,16 @@ app.get('/api/delete/:from/:to', async function (req, res) {
 
   res.json({msg: 'success'});  
 });
+
+app.get('/api/ping', async function (req, res) {
+  const now = new Date();
+  const d = now.getTime();
+  const doc = new Ping();
+  doc.timestamp = d;
+  await doc.save(); 
+  res.json({msg: 'success'});  
+});
+
 
 app.get('/api/report/:start/:end/:app', async function (req, res) {
   const {start, end, app} = req.params;
